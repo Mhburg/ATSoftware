@@ -9,11 +9,11 @@ using Model;
 
 namespace DAL
 {
-    class SPYSTKDBC : DbContext, ICount
+    class SPYSTKDBC : IBDbContext
     {
         #region Constructor
         public SPYSTKDBC()
-            : base(System.Configuration.ConfigurationManager.ConnectionStrings["Sample_Stocks_V3"].ConnectionString)
+            :base()
         {
         }
         #endregion
@@ -26,6 +26,12 @@ namespace DAL
         public DbSet<Contract> CONTRACTS { get; set; }
         public DbSet<ContractDetails> CONTRACT_DETAILS { get; set; }
         public DbSet<Order> SPY_STK_ORDERS { get; set; }
+
+        public DbContext GetInstance()
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
 
 

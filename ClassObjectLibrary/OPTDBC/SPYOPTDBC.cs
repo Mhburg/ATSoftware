@@ -5,11 +5,11 @@ using System;
 
 namespace DAL
 {
-    public class SPYOPTDBC : DbContext, ICount
+    public class SPYOPTDBC : IBDbContext
     {
         #region Constructor
         public SPYOPTDBC()
-            : base(System.Configuration.ConfigurationManager.ConnectionStrings["Sample_Stocks_V3"].ConnectionString)
+            :base()
         {
         }
         #endregion

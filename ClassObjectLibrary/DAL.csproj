@@ -55,8 +55,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EFHelper.cs" />
+    <Compile Include="GeneralDBC\IBDbContext.cs" />
     <Compile Include="GeneralDBC\SPYDBC.cs" />
-    <Compile Include="ICount.cs" />
     <Compile Include="OPTDBC\SPYOPTDBC.cs" />
     <Compile Include="STKDBC\SPYSTKDBC.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -76,7 +76,9 @@
       <Name>Model</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Interface\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

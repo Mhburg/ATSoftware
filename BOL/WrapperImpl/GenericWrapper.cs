@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IBApi;
 
 namespace BOL
 {
@@ -38,6 +39,16 @@ namespace BOL
         public override void tickGeneric(int tickerId, int field, double value)
         {
             _repo.ReadtickGeneric(tickerId, field, value);
+        }
+
+        public override void contractDetails(int reqId, ContractDetails contractDetails)
+        {
+            _repo.ReadContractDetails(reqId, contractDetails);            
+        }
+
+        public override void contractDetailsEnd(int reqId)
+        {
+            _repo.ReadContractDetailsEnd(reqId);
         }
         #endregion
     }

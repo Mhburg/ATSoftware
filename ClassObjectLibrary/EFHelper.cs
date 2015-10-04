@@ -14,17 +14,20 @@ namespace DAL
         #endregion
 
         #region Public Methods
-        public static T AddEntry<T>(this DbSet<T> dbset, T entry, ICount count) where T : class
+        public static T AddEntry<T>(this DbSet<T> dbset, T entry, IBDbContext dbc) where T : class
         {
-            ++count.EntryCount;
+            ++dbc.EntryCount;
             return dbset.Add(entry);
         }
-        public static int Save(this DbContext dbContext, ICount count)
+        public static int Save(this IBDbContext dbc)
         {
-            if (count.EntryCount >= 1000)
+            if (dbc.EntryCount >= 3000)
             {
-                count.EntryCount = 0;
-                return dbContext.SaveChanges();
+                dbc.EntryCount = 0;
+                int result = dbc.SaveChanges();
+                dbc.Dispose();
+                dbc = dbc.GetInstance();
+                return result;
             }
             return 0;
         }
