@@ -31,5 +31,15 @@ namespace Utility
             contract.SecType = "OPT";
             return contract;
         }
+
+        private static Random _reqIdSource = new Random(DateTime.Now.Second);
+
+        public static Random ReqIdSouce
+        {
+            get
+            {
+                return _reqIdSource;
+            }
+        }
     }
 }

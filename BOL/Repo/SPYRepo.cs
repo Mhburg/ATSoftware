@@ -17,47 +17,54 @@ namespace BOL
         private ConcurrentDictionary<int, List<IStrategy>> _strategyBacklog
             = new ConcurrentDictionary<int, List<IStrategy>>();
         private SPYDBC _spyDBC = new SPYDBC();
-        private Dictionary<int, List<ContractDetails>> _contractCOL = new Dictionary<int, List<ContractDetails>>();
         private GenericWrapper _wrapper;
+        private string _udlySymbol;
+
+        
         #endregion
 
         #region Constructors
         public SPYRepo(string symbol)
         {
             _wrapper = new GenericWrapper(this);
-            using (var tmpDBC = new SPYDBC())
-            {
-                var tmpContract = tmpDBC.CONTRACT_DETAILS.FirstOrDefault(t => t.Summary.Symbol == symbol && t.Summary.SecType == SecTypRef.GetType(SecTypRef.STK));
-                if (tmpContract == default(ContractDetails))
-                {
-                    _wrapper.ClientSocket.reqContractDetails(1, Tools.TGetStockForQuery(symbol));
-                }
-            }
+            _udlySymbol = symbol;
         }
         #endregion
 
         #region IRepo Implementation
-        public void RegisterStrategy(IStrategy strt, int conId, bool snapshot)
+
+        public string UdlySymbol
         {
-            if (!snapshot)
+            get
             {
-                _strategyBacklog[conId].Add(strt);
+                return _udlySymbol;
             }
-            else
-            {
-                Task.Run(() =>
+        }
+
+        /// <summary>
+        /// When snapshot flag is set, conId must be a unique key in the _strategyBackLog.
+        /// </summary>
+        public void RequestMktData(IStrategy strt, int conId, Contract contract, string genericticklist, bool snapshot)
+        {
+            _strategyBacklog.AddOrUpdate(conId, new List<IStrategy>() { strt },
+                (key, oldlist) =>
                 {
-                    using (var tmpDBC = new SPYDBC())
-                    {
-                        strt.GetTickPrice(tmpDBC.SPY_TICK_PRICES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.ASK));
-                        strt.GetTickPrice(tmpDBC.SPY_TICK_PRICES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.BID));
-                        strt.GetTickPrice(tmpDBC.SPY_TICK_PRICES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.LAST));
-                        strt.GetTickSize(tmpDBC.SPY_TICK_SIZES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.ASK_SIZE));
-                        strt.GetTickSize(tmpDBC.SPY_TICK_SIZES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.BID_SIZE));
-                        strt.GetTickSize(tmpDBC.SPY_TICK_SIZES.LastOrDefault(t => t.Ticker_Id == conId && t.Field == TickType.LAST_SIZE));
-                    }
+                    oldlist.Add(strt);
+                    return oldlist;
                 });
-            }
+            /*** Any possible error if send multiple request for the same market data ***/
+            _wrapper.ClientSocket.reqMktData(conId, contract, genericticklist, snapshot, new List<TagValue>());
+        }
+
+        public void RequestContractsForQuery(IStrategy strt, int reqId, Contract contract)
+        {
+            _strategyBacklog.TryAdd(reqId, new List<IStrategy>() { strt });
+            _wrapper.ClientSocket.reqContractDetails(reqId, contract);
+        }
+
+        public void UnRegisterDataSubs(IStrategy strt, int reqId)
+        {
+            _strategyBacklog[reqId].RemoveAll(t => t.StrategyId == strt.StrategyId);
         }
 
         public void ReadTickPrice(int tickerId, int field, double price, int canAutoExecute)
@@ -89,7 +96,6 @@ namespace BOL
         public void ReadtickSize(int tickerId, int field, int size)
         {
             long timestamp = DateTime.Now.Ticks - Tools.TicksFrom70;
-            TickSize ts = new TickSize() { Ticker_Id = tickerId, Field = field, Size = size };
             _strategyBacklog[tickerId].ForEach(t => Task.Run(
                 () => t.GetTickSize(
                     new TickSize()
@@ -141,32 +147,32 @@ namespace BOL
 
         public void ReadContractDetails(int reqId, ContractDetails contractDetails)
         {
-            _spyDBC.CONTRACT_DETAILS.AddEntry(contractDetails, _spyDBC);
-            _contractCOL.
+            if (!_spyDBC.CONTRACT_DETAILS.Any(t => t.Summary.ConId == contractDetails.Summary.ConId))
+            {
+                _spyDBC.CONTRACT_DETAILS.AddEntry(contractDetails, _spyDBC);
+            }
+            _strategyBacklog[reqId].ForEach(
+                t => Task.Run(
+                    () => t.GetContractDetails(contractDetails)
+                    ));
             _spyDBC.Save();
         }
 
         public void ReadContractDetailsEnd(int reqid)
         {
-            Task.Run(
-                () =>
-                {
-                    _contractCOL[reqid]
-                })
+            _strategyBacklog[reqid].ForEach(
+                t => Task.Run(
+                    () => t.GetContractDetailsEnd()
+                    ));
         }
 
-        public IQueryable<ContractDetails> ReturnContractsForQuery(string symbol)
+        public void ReadTickSnapShotEnd(int reqId)
         {
-            using (var tmpDBC = new SPYDBC())
-            {
-                var result = tmpDBC.CONTRACT_DETAILS.Where(r => r.Summary.Symbol == symbol);
-                if (result.Count() == 0)
-                {
-                    _wrapper.ClientSocket.req
-                }
-            }
+            _strategyBacklog[reqId].ForEach(
+                t => Task.Run(
+                    () => t.GetTickSnapShotEnd()
+                    ));
         }
-
 
         #endregion
     }

@@ -9,10 +9,17 @@ namespace BOL
 {
     public interface IRepo
     {
-        /*** Register strategy for data broadcast ***/
-        void RegisterStrategy(IStrategy strt, int conId, bool snapshot);
-        /*** Send contract info to strategy ***/
-        IQueryable<ContractDetails> ReturnContractsForQuery(string symbol);
+        string UdlySymbol { get; }
+
+        void RequestMktData(IStrategy strt, int conId, Contract contract, string genericticklist, bool snapshot);
+        /// <summary>
+        /// Send request for contracts to API
+        /// </summary>
+        void RequestContractsForQuery(IStrategy strt, int reqId, Contract contract);
+        /// <summary>
+        /// Remove strategy from data subscription collection
+        /// </summary>
+        void UnRegisterDataSubs(IStrategy strt, int reqId);
 
         /*** Read incoming data from Wrapper Reader ***/
         void ReadTickPrice(int tickerId, int field, double price, int canAutoExecute);
@@ -21,5 +28,6 @@ namespace BOL
         void ReadtickGeneric(int tickerId, int field, double value);
         void ReadContractDetails(int reqId, ContractDetails contractDetails);
         void ReadContractDetailsEnd(int reqId);
+        void ReadTickSnapShotEnd(int reqId);
     }
 }
