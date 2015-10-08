@@ -9,6 +9,7 @@ using System.Threading;
 using IBSamples;
 using System.Collections.Generic;
 using BOL;
+using Model;
 
 namespace Samples
 {
@@ -17,15 +18,22 @@ namespace Samples
 
         public static int Main(string[] args)
         {
-            EWrapperImpl testImpl = new EWrapperImpl();
-            testImpl.ClientSocket.eConnect("127.0.0.1", 7496, 0, false);
-            /*************************************************************************************************************************************************/
-            /* One good way of knowing if we can proceed is by monitoring the order's nextValidId reception which comes down automatically after connecting. */
-            /*************************************************************************************************************************************************/
-            while (testImpl.NextOrderId <= 0) { }            
-            testIBMethods(testImpl);            
-            Console.WriteLine("Disconnecting...");
-            testImpl.ClientSocket.eDisconnect();
+            SPYRepo repo = new SPYRepo("TWTR");
+            BoxStrategy box = new BoxStrategy(repo, 1, "20151009");
+            repo.Wrapper.ClientSocket.eConnect("127.0.0.1", 7496, 0, false);
+            while (repo.Wrapper.NextOrderId <= 0) { }
+            box.Run();
+            Console.ReadKey();
+
+            //EWrapperImpl testImpl = new EWrapperImpl();
+            //testImpl.ClientSocket.eConnect("127.0.0.1", 7496, 0, false);
+            ///*************************************************************************************************************************************************/
+            ///* One good way of knowing if we can proceed is by monitoring the order's nextValidId reception which comes down automatically after connecting. */
+            ///*************************************************************************************************************************************************/
+            //while (testImpl.NextOrderId <= 0) { }
+            //testIBMethods(testImpl);
+            //Console.WriteLine("Disconnecting...");
+            //testImpl.ClientSocket.eDisconnect();
             return 0;
         }
 
@@ -147,23 +155,23 @@ namespace Samples
             /*** Order handling ***/
             /**********************/
             /*** Requesting the next valid id ***/
-            //wrapper.ClientSocket.reqIds(-1);
+            wrapper.ClientSocket.reqIds(-1);
             /*** Requesting all open orders ***/
-            //wrapper.ClientSocket.reqAllOpenOrders();
+            wrapper.ClientSocket.reqAllOpenOrders();
             /*** Taking over orders to be submitted via TWS ***/
-            //wrapper.ClientSocket.reqAutoOpenOrders(true);
+            wrapper.ClientSocket.reqAutoOpenOrders(true);
             /*** Requesting this API client's orders ***/
-            //wrapper.ClientSocket.reqOpenOrders();
+            wrapper.ClientSocket.reqOpenOrders();
             /*** Placing/modifying an order - remember to ALWAYS increment the nextValidId after placing an order so it can be used for the next one! ***/
-            //Order order = OrderSamples.LimitOrder();
-            //order.OrderMiscOptions = GetFakeParameters(3);
-            //wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getComboContract(), order);
-            //wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getComboContract(), OrderSamples.LimitOrderForComboWithLegPrice());
-            //wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getVixComboContract(), OrderSamples.LimitOrder());
+            Order order = OrderSamples.LimitOrder();
+            order.OrderMiscOptions = GetFakeParameters(3);
+            wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getComboContract(), order);
+            wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getComboContract(), OrderSamples.LimitOrderForComboWithLegPrice());
+            wrapper.ClientSocket.placeOrder(wrapper.NextOrderId++, ContractSamples.getVixComboContract(), OrderSamples.LimitOrder());
             /*** Cancel all orders for all accounts ***/
-            //wrapper.ClientSocket.reqGlobalCancel();
+            wrapper.ClientSocket.reqGlobalCancel();
             /*** Request the day's executions ***/
-            //wrapper.ClientSocket.reqExecutions(10001, new ExecutionFilter());
+            wrapper.ClientSocket.reqExecutions(10001, new ExecutionFilter());
 
             /************************************/
             /*** Financial Advisor Exclusive Operations ***/

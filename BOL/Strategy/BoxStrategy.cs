@@ -24,10 +24,33 @@ namespace BOL
             = new ManualResetEventSlim();
         private ManualResetEventSlim _snapShotLock
             = new ManualResetEventSlim();
-        private ConcurrentDictionary<int, ContractDetails> _contractCOL 
-            = new ConcurrentDictionary<int, ContractDetails>();
-        private ConcurrentDictionary<int, BoxEntry> _priceCOL
-            = new ConcurrentDictionary<int, BoxEntry>();
+        private ReaderWriterLockSlim _udlyContLock 
+            = new ReaderWriterLockSlim();
+        private ConcurrentDictionary<int, ConcurrentContract<Contract>> _contractCOL
+            = new ConcurrentDictionary<int, ConcurrentContract<Contract>>();
+        private ConcurrentDictionary<double, BoxEntry> _priceCOL
+            = new ConcurrentDictionary<double, BoxEntry>();
+
+        #endregion
+
+        #region Public Properties
+
+        public ContractDetails UdlyContract
+        {
+            get
+            {
+                _udlyContLock.EnterReadLock();
+                var contract = _udlyContract;
+                _udlyContLock.ExitReadLock();
+                return contract;
+            }
+            private set
+            {
+                _udlyContLock.EnterWriteLock();
+                _udlyContract = value;
+                _udlyContLock.ExitWriteLock();
+            }
+        }
 
         #endregion
 
@@ -57,10 +80,37 @@ namespace BOL
 
         public void GetContractDetails(ContractDetails contractdetails)
         {
-            _contractCOL.AddOrUpdate(contractdetails.Summary.ConId, contractdetails, (key, oldValue) => oldValue);
+            ConcurrentContract<Contract> tmpContract = new ConcurrentContract<Contract>(contractdetails.Summary);
+            _contractCOL.AddOrUpdate(contractdetails.Summary.ConId, tmpContract, (key, oldValue) => oldValue);
+            if (contractdetails.Summary.SecType == SecTypRef.GetType(SecTypRef.OPT))
+            {
+                if (contractdetails.Summary.Right == SecRightRef.C || contractdetails.Summary.Right == SecRightRef.CALL)
+                {
+                    _repo.RequestMktData(this, contractdetails.Summary.ConId, contractdetails.Summary, "", false);
+                    _priceCOL.AddOrUpdate(
+                        contractdetails.Summary.Strike,
+                        (key) => new BoxEntry() { CallContract = tmpContract },
+                        (key, oldEntry) =>
+                        {
+                            oldEntry.CallContract = tmpContract; return oldEntry;
+                        });
+                }
+                else
+                {
+                    _repo.RequestMktData(this, contractdetails.Summary.ConId, contractdetails.Summary, "", false);
+                    _priceCOL.AddOrUpdate(
+                        contractdetails.Summary.Strike,
+                        (key) => new BoxEntry() { PutContract = tmpContract },
+                        (key, oldEntry) =>
+                        {
+                            oldEntry.PutContract = tmpContract; return oldEntry;
+                        });
+                }
+            }
+
             if (contractdetails.Summary.SecType == SecTypRef.GetType(SecTypRef.STK))
             {
-                _udlyContract = contractdetails;
+                UdlyContract = contractdetails;
             }
         }
 
@@ -71,34 +121,39 @@ namespace BOL
 
         public void GetRTVolume(RTVolume rtvolume)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void GetTickGeneric(TickGeneric tg)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void GetTickPrice(TickerPrice tp)
         {
             if (tp.Field == TickType.ASK)
             {
+                _contractCOL[tp.Ticker_Id].AskPrice = tp.Price;
+            }
+            else
+            {
+                _contractCOL[tp.Ticker_Id].BidPrice = tp.Price;
             }
         }
 
         public void GetTickSize(TickSize ts)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void GetTickSnapShotEnd()
         {
-            throw new NotImplementedException();
+            _snapShotLock.Set();
         }
 
         public void GetTickstring(TickString ts)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void Setup()
@@ -106,7 +161,8 @@ namespace BOL
             _repo.RequestContractsForQuery(this, Tools.ReqIdSouce.Next(), Tools.TGetStockForQuery(_repo.UdlySymbol));
             _contractLock.Wait();
             _contractLock.Reset();
-            _repo.RequestMktData(this, _udlyContract.Summary.ConId, Tools.TGetStockForQuery(_repo.UdlySymbol), "", true);
+            while (UdlyContract == null) { }
+            _repo.RequestMktData(this, UdlyContract.Summary.ConId, Tools.TGetStockForQuery(_repo.UdlySymbol), "", true);
             _repo.RequestContractsForQuery(this, Tools.ReqIdSouce.Next(), Tools.TGetOptionForQuery(_repo.UdlySymbol, _expiry));
             _contractLock.Wait();
             _contractLock.Reset();

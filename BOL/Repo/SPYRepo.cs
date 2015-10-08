@@ -20,7 +20,22 @@ namespace BOL
         private GenericWrapper _wrapper;
         private string _udlySymbol;
 
-        
+        #endregion
+
+        #region Public Properties
+
+        public GenericWrapper Wrapper
+        {
+            get
+            {
+                return _wrapper;
+            }
+            set
+            {
+                _wrapper = value;
+            }
+        }
+
         #endregion
 
         #region Constructors

@@ -25,8 +25,9 @@ namespace DAL
             {
                 dbc.EntryCount = 0;
                 int result = dbc.SaveChanges();
-                dbc.Dispose();
+                var tmpDBC = dbc;
                 dbc = dbc.GetInstance();
+                tmpDBC.Dispose();
                 return result;
             }
             return 0;

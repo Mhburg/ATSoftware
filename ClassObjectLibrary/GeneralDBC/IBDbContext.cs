@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.Entity;
+using System.Threading;
 
 namespace DAL
 {
@@ -11,6 +12,8 @@ namespace DAL
     {
         #region Private/Protected Fields
         protected int _entryCount = 0;
+        private ReaderWriterLockSlim _entryCountLock
+            = new ReaderWriterLockSlim();
         #endregion
 
         #region Constructor
@@ -26,7 +29,8 @@ namespace DAL
         {
             get
             {
-                return _entryCount;
+                int count = _entryCount;
+                return count;
             }
 
             set
